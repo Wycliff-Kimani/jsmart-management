@@ -19,6 +19,9 @@ import androidx.compose.ui.unit.sp
 import com.devcraft.jsmart.ui.theme.*
 import com.devcraft.jsmart.data.*
 import com.devcraft.jsmart.UserSession
+import kotlinx.datetime.Instant
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 
 @Composable
 fun MyReportsScreen() {
@@ -145,7 +148,7 @@ fun MyAttendanceReport(summary: GlobalReportsAttendanceSummary) {
             records.forEach { record ->
                 AttendanceReportRow(
                     record.date,
-                    "${record.clockInTime ?: "--"} – ${record.clockOutTime ?: "--"}",
+                    "${formatClockTime(record.clockInTime)} – ${formatClockTime(record.clockOutTime)}",
                     record.status.replaceFirstChar { it.uppercase() }
                 )
             }
@@ -305,5 +308,20 @@ fun LeaveReportRow(type: String, detail: String, status: String) {
             }
             StatusBadge(status)
         }
+    }
+}
+
+fun formatClockTime(raw: String?): String {
+    if (raw.isNullOrBlank()) return "--"
+    return try {
+        val cleaned = raw.replace(" ", "T")
+            .let { if (!it.contains("+") && !it.endsWith("Z")) "${it}Z" else it }
+        val instant = Instant.parse(cleaned)
+        val local = instant.toLocalDateTime(TimeZone.currentSystemDefault())
+        val h = local.hour.toString().padStart(2, '0')
+        val m = local.minute.toString().padStart(2, '0')
+        "$h:$m"
+    } catch (e: Exception) {
+        raw.take(5)
     }
 }

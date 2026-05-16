@@ -136,7 +136,6 @@ fun LeaveApprovalScreen(onBack: () -> Unit = {}) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
                 .background(Cream)
         ) {
             Row(
@@ -184,6 +183,7 @@ fun LeaveApprovalScreen(onBack: () -> Unit = {}) {
                     modifier = Modifier
                         .fillMaxSize()
                         .verticalScroll(rememberScrollState())
+                        .padding(paddingValues)
                         .padding(16.dp)
                 ) {
                     // Summary row

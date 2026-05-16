@@ -3,6 +3,7 @@
 package com.devcraft.jsmart.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -16,8 +17,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.devcraft.jsmart.ui.theme.*
+import com.devcraft.jsmart.UserSession
 import com.devcraft.jsmart.data.*
+import com.devcraft.jsmart.ui.theme.*
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
@@ -27,12 +29,13 @@ import java.util.Date
 import java.util.Locale
 
 @Composable
-fun AdminReportsScreen() {
+fun AdminReportsScreen(onNavigate: (String) -> Unit = {}) {
     var selectedTab by remember { mutableIntStateOf(0) }
     val tabs = listOf("Overview", "Attendance", "Tasks", "Leave")
 
     var adminStats by remember { mutableStateOf(AdminReportStats()) }
     var isLoading by remember { mutableStateOf(true) }
+    var branchTasks by remember { mutableStateOf<List<TaskRow>>(emptyList()) }
 
     val now = remember {
         Clock.System.now().toLocalDateTime(
@@ -74,6 +77,13 @@ fun AdminReportsScreen() {
         adminStats = ReportsRepository.getAdminReportStats(branchId)
         val staffList = StaffRepository.getAllStaff()
         allStaff = staffList.associate { it.id to it.fullName }
+
+        branchTasks = if (branchId.isNullOrBlank()) {
+            TaskRepository.getAllTasks()
+        } else {
+            TaskRepository.getAllTasks().filter { it.branchId == branchId }
+        }
+
         isLoading = false
     }
 
@@ -128,13 +138,9 @@ fun AdminReportsScreen() {
             if (showFromDatePicker) {
                 val dbFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
                 val initialDate = try {
-                    dbFormat.parse(fromDate)?.time ?: java.time.LocalDate.now()
-                        .atStartOfDay(java.time.ZoneOffset.UTC)
-                        .toInstant().toEpochMilli()
-                } catch (e: Exception) {
-                    java.time.LocalDate.now()
-                        .atStartOfDay(java.time.ZoneOffset.UTC)
-                        .toInstant().toEpochMilli()
+                    dbFormat.parse(fromDate)?.time ?: java.time.Clock.systemUTC().millis()
+                } catch (_: Exception) {
+                    java.time.Clock.systemUTC().millis()
                 }
                 val datePickerState = rememberDatePickerState(initialSelectedDateMillis = initialDate)
 
@@ -167,13 +173,9 @@ fun AdminReportsScreen() {
             if (showToDatePicker) {
                 val dbFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
                 val initialDate = try {
-                    dbFormat.parse(toDate)?.time ?: java.time.LocalDate.now()
-                        .atStartOfDay(java.time.ZoneOffset.UTC)
-                        .toInstant().toEpochMilli()
-                } catch (e: Exception) {
-                    java.time.LocalDate.now()
-                        .atStartOfDay(java.time.ZoneOffset.UTC)
-                        .toInstant().toEpochMilli()
+                    dbFormat.parse(toDate)?.time ?: java.time.Clock.systemUTC().millis()
+                } catch (_: Exception) {
+                    java.time.Clock.systemUTC().millis()
                 }
                 val datePickerState = rememberDatePickerState(initialSelectedDateMillis = initialDate)
 
@@ -221,7 +223,10 @@ fun AdminReportsScreen() {
                         records = staffAttendance,
                         staffMap = allStaff
                     )
-                    2 -> AdminTasksTab(adminStats)
+                    2 -> AdminTasksTab(adminStats, branchTasks) { task ->
+                        TaskSession.currentTask = task
+                        onNavigate(com.devcraft.jsmart.navigation.Routes.TASK_DETAIL)
+                    }
                     3 -> AdminLeaveTab(adminStats)
                 }
             }
@@ -358,7 +363,11 @@ fun AdminAttendanceTab(
 }
 
 @Composable
-fun AdminTasksTab(stats: AdminReportStats) {
+fun AdminTasksTab(
+    stats: AdminReportStats,
+    tasks: List<TaskRow>,
+    onTaskClick: (TaskRow) -> Unit
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -376,7 +385,20 @@ fun AdminTasksTab(stats: AdminReportStats) {
     }
 
     Spacer(modifier = Modifier.height(20.dp))
-    Text("Tasks analytics are visible in the Overview tab.", fontSize = 13.sp, color = CharcoalMedium)
+
+    Text("Branch Tasks", fontSize = 16.sp,
+        fontWeight = FontWeight.SemiBold, color = CharcoalDark)
+    Spacer(modifier = Modifier.height(8.dp))
+
+    if (tasks.isEmpty()) {
+        Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+            Text("No tasks found", color = CharcoalMedium, fontSize = 14.sp)
+        }
+    } else {
+        tasks.forEach { task ->
+            TaskCard(task, showAssignee = true, onClick = { onTaskClick(task) })
+        }
+    }
 }
 
 @Composable

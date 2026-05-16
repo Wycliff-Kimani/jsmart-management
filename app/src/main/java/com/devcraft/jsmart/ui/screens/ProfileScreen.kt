@@ -31,6 +31,7 @@ import kotlinx.coroutines.launch
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -87,13 +88,7 @@ fun ProfileScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .background(Cream)
-                .verticalScroll(rememberScrollState())
-        ) {
+        Column(modifier = Modifier.fillMaxSize().background(Cream)) {
             // Top Bar
             Row(
                 modifier = Modifier
@@ -153,9 +148,15 @@ fun ProfileScreen(
                 }
             }
 
-            Column(modifier = Modifier.padding(16.dp)) {
-
-                // Avatar + Header Section
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .background(Cream)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    // Avatar + Header Section
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally
@@ -589,6 +590,18 @@ fun ProfileScreen(
             }
         }
     }
+}
+
+@Composable
+fun SectionHeader(title: String) {
+    Text(
+        text = title,
+        fontSize = 12.sp,
+        fontWeight = FontWeight.SemiBold,
+        color = CharcoalMedium,
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+        letterSpacing = 1.sp
+    )
 }
 
 @Composable

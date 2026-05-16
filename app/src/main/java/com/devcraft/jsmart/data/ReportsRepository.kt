@@ -173,7 +173,8 @@ object ReportsRepository {
             }
 
             val presentToday = attendanceRecords.count {
-                it.status.lowercase() == "present"
+                it.status.lowercase() == "present" ||
+                it.status.lowercase() == "late"
             }
             val absentToday = attendanceRecords.count {
                 it.status.lowercase() == "absent"

@@ -123,12 +123,9 @@ fun AdminDashboardScreen(onNavigate: (String) -> Unit) {
             }
         } else {
             Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(padding)
+                modifier = Modifier.fillMaxSize()
             ) {
-                // Top Bar
+                // Top Bar - NO padding above it
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -164,181 +161,189 @@ fun AdminDashboardScreen(onNavigate: (String) -> Unit) {
                     }
                 }
 
-                Column(modifier = Modifier.padding(16.dp)) {
+                // Scrollable content with padding
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(padding)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
 
-                    // Branch selector tabs
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        val kamakisId = "965dc64f-9636-4062-88dc-a5c727f19245"
-                        val cbdId = "1ce1489b-8b5b-498e-9d6a-fad2d4000cbe"
+                        // Branch selector tabs
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            val kamakisId = "965dc64f-9636-4062-88dc-a5c727f19245"
+                            val cbdId = "1ce1489b-8b5b-498e-9d6a-fad2d4000cbe"
 
-                        BranchChip(
-                            label = "Bypass Kamakis",
-                            selected = selectedBranch == kamakisId,
-                            onClick = { selectedBranch = kamakisId }
-                        )
-                        BranchChip(
-                            label = "CBD Branch",
-                            selected = selectedBranch == cbdId,
-                            onClick = { selectedBranch = cbdId }
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Overview cards
-                    Text("Today's Overview", fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold, color = CharcoalDark)
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        StatCard("Present Today", "${stats?.presentToday ?: 0}/${stats?.totalStaff ?: 0}", Icons.Filled.CheckCircle,
-                            valueColor = SuccessGreen, modifier = Modifier.weight(1f))
-                        StatCard("Absent", "${stats?.absentToday ?: 0}", Icons.Filled.Cancel,
-                            valueColor = ErrorRed, modifier = Modifier.weight(1f))
-                        StatCard("Late Arrivals", "${stats?.lateToday ?: 0}", Icons.Filled.Schedule,
-                            valueColor = WarningAmber, modifier = Modifier.weight(1f))
-                    }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        StatCard("Avg Clock-in", stats?.avgClockIn ?: "--", Icons.Filled.AccessTime,
-                            modifier = Modifier.weight(1f))
-                        StatCard("On Leave", "${stats?.onLeave ?: 0}", Icons.Filled.BeachAccess,
-                            modifier = Modifier.weight(1f))
-                        StatCard("Monthly Rate", "${stats?.monthlyRate ?: 0}%", Icons.Filled.BarChart,
-                            valueColor = TealPrimary, modifier = Modifier.weight(1f))
-                    }
-
-                    Spacer(modifier = Modifier.height(20.dp))
-
-                    // Admin Clock In/Out Button
-                    Button(
-                        onClick = { permissionLauncher.launch(android.Manifest.permission.ACCESS_FINE_LOCATION) },
-                        modifier = Modifier.fillMaxWidth().height(50.dp),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (isClockedIn) ErrorRed else TealPrimary
-                        ),
-                        enabled = !isClockLoading
-                    ) {
-                        if (isClockLoading) {
-                            CircularProgressIndicator(color = Cream, modifier = Modifier.size(24.dp))
-                        } else {
-                            Text(if (isClockedIn) "Clock Out" else "Clock In", fontWeight = FontWeight.Bold)
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(24.dp))
-
-                    // Quick Actions
-                    Text("Quick Actions", fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold, color = CharcoalDark)
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        QuickActionCard("Post\nAnnouncement", Icons.Filled.Campaign,
-                            Routes.ANNOUNCEMENTS, onNavigate, Modifier.weight(1f))
-                        QuickActionCard("Leave\nApprovals", Icons.Filled.EventAvailable,
-                            Routes.LEAVE_APPROVAL, onNavigate, Modifier.weight(1f))
-                        QuickActionCard("Assign\nTask", Icons.Filled.AddTask,
-                            Routes.TASK_CREATION, onNavigate, Modifier.weight(1f))
-                        QuickActionCard("Full\nReports", Icons.Filled.Assessment,
-                            Routes.ADMIN_REPORTS, onNavigate, Modifier.weight(1f))
-                    }
-
-                    Spacer(modifier = Modifier.height(24.dp))
-
-                    // Pending leave requests
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("Pending Leave Requests", fontSize = 16.sp,
-                            fontWeight = FontWeight.SemiBold, color = CharcoalDark)
-                        TextButton(onClick = { onNavigate(Routes.LEAVE_APPROVAL) }) {
-                            Text("See All", color = TealPrimary)
-                        }
-                    }
-
-                    if (pendingLeaves.isEmpty()) {
-                        Text("No pending requests", modifier = Modifier.padding(vertical = 8.dp), color = CharcoalMedium, fontSize = 14.sp)
-                    } else {
-                        pendingLeaves.take(2).forEach { leave ->
-                            LeaveRequestItem(
-                                name = leave.userId.take(8), // Since we don't have a staff name map here yet as requested
-                                type = leave.leaveType,
-                                dates = "${formatDate(leave.startDate)}–${formatDate(leave.endDate)}",
-                                duration = "Request",
-                                onApprove = {
-                                    scope.launch {
-                                        LeaveRepository.approveLeave(leave.id!!, user?.id ?: "")
-                                        refreshData()
-                                    }
-                                },
-                                onReject = {
-                                    scope.launch {
-                                        LeaveRepository.rejectLeave(leave.id!!, user?.id ?: "", "Rejected from dashboard")
-                                        refreshData()
-                                    }
-                                }
+                            BranchChip(
+                                label = "Bypass Kamakis",
+                                selected = selectedBranch == kamakisId,
+                                onClick = { selectedBranch = kamakisId }
+                            )
+                            BranchChip(
+                                label = "CBD Branch",
+                                selected = selectedBranch == cbdId,
+                                onClick = { selectedBranch = cbdId }
                             )
                         }
-                    }
 
-                    Spacer(modifier = Modifier.height(24.dp))
+                        Spacer(modifier = Modifier.height(16.dp))
 
-                    // Staff list preview
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("Staff Attendance Today", fontSize = 16.sp,
+                        // Overview cards
+                        Text("Today's Overview", fontSize = 16.sp,
                             fontWeight = FontWeight.SemiBold, color = CharcoalDark)
-                        TextButton(onClick = { onNavigate(Routes.STAFF_MANAGEMENT) }) {
-                            Text("See All", color = TealPrimary)
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            StatCard("Present Today", "${stats?.presentToday ?: 0}/${stats?.totalStaff ?: 0}", Icons.Filled.CheckCircle,
+                                valueColor = SuccessGreen, modifier = Modifier.weight(1f))
+                            StatCard("Absent", "${stats?.absentToday ?: 0}", Icons.Filled.Cancel,
+                                valueColor = ErrorRed, modifier = Modifier.weight(1f))
+                            StatCard("Late Arrivals", "${stats?.lateToday ?: 0}", Icons.Filled.Schedule,
+                                valueColor = WarningAmber, modifier = Modifier.weight(1f))
                         }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            StatCard("Avg Clock-in", stats?.avgClockIn ?: "--", Icons.Filled.AccessTime,
+                                modifier = Modifier.weight(1f))
+                            StatCard("On Leave", "${stats?.onLeave ?: 0}", Icons.Filled.BeachAccess,
+                                modifier = Modifier.weight(1f))
+                            StatCard("Monthly Rate", "${stats?.monthlyRate ?: 0}%", Icons.Filled.BarChart,
+                                valueColor = TealPrimary, modifier = Modifier.weight(1f))
+                        }
+
+                        Spacer(modifier = Modifier.height(20.dp))
+
+                        // Admin Clock In/Out Button
+                        Button(
+                            onClick = { permissionLauncher.launch(android.Manifest.permission.ACCESS_FINE_LOCATION) },
+                            modifier = Modifier.fillMaxWidth().height(50.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (isClockedIn) ErrorRed else TealPrimary
+                            ),
+                            enabled = !isClockLoading
+                        ) {
+                            if (isClockLoading) {
+                                CircularProgressIndicator(color = Cream, modifier = Modifier.size(24.dp))
+                            } else {
+                                Text(if (isClockedIn) "Clock Out" else "Clock In", fontWeight = FontWeight.Bold)
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(24.dp))
+
+                        // Quick Actions
+                        Text("Quick Actions", fontSize = 16.sp,
+                            fontWeight = FontWeight.SemiBold, color = CharcoalDark)
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            QuickActionCard("Post\nAnnouncement", Icons.Filled.Campaign,
+                                Routes.ANNOUNCEMENTS, onNavigate, Modifier.weight(1f))
+                            QuickActionCard("Leave\nApprovals", Icons.Filled.EventAvailable,
+                                Routes.LEAVE_APPROVAL, onNavigate, Modifier.weight(1f))
+                            QuickActionCard("Assign\nTask", Icons.Filled.AddTask,
+                                Routes.TASK_CREATION, onNavigate, Modifier.weight(1f))
+                            QuickActionCard("Full\nReports", Icons.Filled.Assessment,
+                                Routes.ADMIN_REPORTS, onNavigate, Modifier.weight(1f))
+                        }
+
+                        Spacer(modifier = Modifier.height(24.dp))
+
+                        // Pending leave requests
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("Pending Leave Requests", fontSize = 16.sp,
+                                fontWeight = FontWeight.SemiBold, color = CharcoalDark)
+                            TextButton(onClick = { onNavigate(Routes.LEAVE_APPROVAL) }) {
+                                Text("See All", color = TealPrimary)
+                            }
+                        }
+
+                        if (pendingLeaves.isEmpty()) {
+                            Text("No pending requests", modifier = Modifier.padding(vertical = 8.dp), color = CharcoalMedium, fontSize = 14.sp)
+                        } else {
+                            pendingLeaves.take(2).forEach { leave ->
+                                LeaveRequestItem(
+                                    name = leave.userId.take(8), // Since we don't have a staff name map here yet as requested
+                                    type = leave.leaveType,
+                                    dates = "${formatDate(leave.startDate)}–${formatDate(leave.endDate)}",
+                                    duration = "Request",
+                                    onApprove = {
+                                        scope.launch {
+                                            LeaveRepository.approveLeave(leave.id!!, user?.id ?: "")
+                                            refreshData()
+                                        }
+                                    },
+                                    onReject = {
+                                        scope.launch {
+                                            LeaveRepository.rejectLeave(leave.id!!, user?.id ?: "", "Rejected from dashboard")
+                                            refreshData()
+                                        }
+                                    }
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(24.dp))
+
+                        // Staff list preview
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("Staff Attendance Today", fontSize = 16.sp,
+                                fontWeight = FontWeight.SemiBold, color = CharcoalDark)
+                            TextButton(onClick = { onNavigate(Routes.STAFF_MANAGEMENT) }) {
+                                Text("See All", color = TealPrimary)
+                            }
+                        }
+
+                        staffList.take(5).forEach { row ->
+                            val statusText = when (row.status) {
+                                "present" -> "Clocked In • ${formatTime(row.clockInTime)}"
+                                "late" -> "Late • ${formatTime(row.clockInTime)}"
+                                "absent" -> "Absent"
+                                "on_leave" -> "On Leave"
+                                else -> row.status
+                            }
+                            val dotColor = when (row.status) {
+                                "present", "late" -> SuccessGreen
+                                "absent" -> ErrorRed
+                                "on_leave" -> WarningAmber
+                                else -> CharcoalMedium
+                            }
+
+                            StaffAttendanceRow(
+                                name = row.fullName,
+                                status = statusText,
+                                present = row.status == "present" || row.status == "late",
+                                statusColor = dotColor,
+                                onClick = { onNavigate(Routes.STAFF_DETAIL.replace("{staffId}", row.userId)) }
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(80.dp))
                     }
-
-                    staffList.take(5).forEach { row ->
-                        val statusText = when (row.status) {
-                            "present" -> "Clocked In • ${formatTime(row.clockInTime)}"
-                            "late" -> "Late • ${formatTime(row.clockInTime)}"
-                            "absent" -> "Absent"
-                            "on_leave" -> "On Leave"
-                            else -> row.status
-                        }
-                        val dotColor = when (row.status) {
-                            "present", "late" -> SuccessGreen
-                            "absent" -> ErrorRed
-                            "on_leave" -> WarningAmber
-                            else -> CharcoalMedium
-                        }
-
-                        StaffAttendanceRow(
-                            name = row.fullName,
-                            status = statusText,
-                            present = row.status == "present" || row.status == "late",
-                            statusColor = dotColor,
-                            onClick = { onNavigate(Routes.STAFF_DETAIL.replace("{staffId}", row.userId)) }
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(80.dp))
                 }
             }
         }
