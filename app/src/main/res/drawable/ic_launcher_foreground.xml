@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Launcher foreground now uses a bitmap resource. Place your launcher image
+     as mipmap/ic_launcher_image.png (multiple densities) so it will be picked up here. -->
+<bitmap xmlns:android="http://schemas.android.com/apk/res/android"
+    android:src="@mipmap/ic_launcher"
+    android:gravity="center" />
