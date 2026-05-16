@@ -47,6 +47,19 @@ fun LeaveApprovalScreen(onBack: () -> Unit = {}) {
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
+    fun formatLeaveDate(raw: String?): String {
+        if (raw.isNullOrBlank()) return "--"
+        return try {
+            val parts = raw.trim().take(10).split("-")
+            val months = listOf("","Jan","Feb","Mar","Apr","May",
+                "Jun","Jul","Aug","Sep","Oct","Nov","Dec")
+            val month = months[parts[1].toInt()]
+            val day = parts[2].toInt()
+            val year = parts[0]
+            "$month $day, $year"
+        } catch (e: Exception) { raw }
+    }
+
     var showRejectDialog by remember { mutableStateOf<String?>(null) } // holds leaveId
     var rejectionReason by remember { mutableStateOf("") }
 
@@ -130,7 +143,6 @@ fun LeaveApprovalScreen(onBack: () -> Unit = {}) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(TealPrimary)
-                    .statusBarsPadding()
                     .padding(horizontal = 16.dp, vertical = 14.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -202,9 +214,9 @@ fun LeaveApprovalScreen(onBack: () -> Unit = {}) {
                             }
                         }, onReject = { leaveId ->
                             showRejectDialog = leaveId
-                        })
-                        1 -> ApprovedLeaveList(approvedRequests, staffNames)
-                        2 -> RejectedLeaveList(rejectedRequests, staffNames)
+                        }, formatLeaveDate = ::formatLeaveDate)
+                        1 -> ApprovedLeaveList(approvedRequests, staffNames, formatLeaveDate = ::formatLeaveDate)
+                        2 -> RejectedLeaveList(rejectedRequests, staffNames, formatLeaveDate = ::formatLeaveDate)
                     }
 
                     Spacer(modifier = Modifier.height(80.dp))
@@ -219,7 +231,8 @@ fun PendingLeaveList(
     requests: List<LeaveRow>,
     staffNames: Map<String, String>,
     onApprove: (String) -> Unit,
-    onReject: (String) -> Unit
+    onReject: (String) -> Unit,
+    formatLeaveDate: (String?) -> String
 ) {
     Text("Awaiting Your Approval", fontSize = 16.sp,
         fontWeight = FontWeight.SemiBold, color = CharcoalDark)
@@ -229,7 +242,7 @@ fun PendingLeaveList(
         LeaveRequestItem(
             name = staffNames[request.userId] ?: request.userId.take(8),
             type = request.leaveType,
-            dates = "${request.startDate}—${request.endDate}",
+            dates = "${formatLeaveDate(request.startDate)}—${formatLeaveDate(request.endDate)}",
             duration = "", // Calculate if needed, but keeping UI simple for now
             reason = request.reason ?: "",
             onApprove = { onApprove(request.id!!) },
@@ -239,7 +252,11 @@ fun PendingLeaveList(
 }
 
 @Composable
-fun ApprovedLeaveList(requests: List<LeaveRow>, staffNames: Map<String, String>) {
+fun ApprovedLeaveList(
+    requests: List<LeaveRow>,
+    staffNames: Map<String, String>,
+    formatLeaveDate: (String?) -> String
+) {
     Text("Approved Requests", fontSize = 16.sp,
         fontWeight = FontWeight.SemiBold, color = CharcoalDark)
     Spacer(modifier = Modifier.height(8.dp))
@@ -248,7 +265,7 @@ fun ApprovedLeaveList(requests: List<LeaveRow>, staffNames: Map<String, String>)
         val item = LeaveApprovalItem(
             name = staffNames[request.userId] ?: request.userId.take(8),
             type = request.leaveType,
-            dates = "${request.startDate}—${request.endDate}",
+            dates = "${formatLeaveDate(request.startDate)}—${formatLeaveDate(request.endDate)}",
             duration = "",
             reason = request.reason ?: ""
         )
@@ -257,7 +274,11 @@ fun ApprovedLeaveList(requests: List<LeaveRow>, staffNames: Map<String, String>)
 }
 
 @Composable
-fun RejectedLeaveList(requests: List<LeaveRow>, staffNames: Map<String, String>) {
+fun RejectedLeaveList(
+    requests: List<LeaveRow>,
+    staffNames: Map<String, String>,
+    formatLeaveDate: (String?) -> String
+) {
     Text("Rejected Requests", fontSize = 16.sp,
         fontWeight = FontWeight.SemiBold, color = CharcoalDark)
     Spacer(modifier = Modifier.height(8.dp))
@@ -266,7 +287,7 @@ fun RejectedLeaveList(requests: List<LeaveRow>, staffNames: Map<String, String>)
         val item = LeaveApprovalItem(
             name = staffNames[request.userId] ?: request.userId.take(8),
             type = request.leaveType,
-            dates = "${request.startDate}—${request.endDate}",
+            dates = "${formatLeaveDate(request.startDate)}—${formatLeaveDate(request.endDate)}",
             duration = "",
             reason = request.reason ?: ""
         )

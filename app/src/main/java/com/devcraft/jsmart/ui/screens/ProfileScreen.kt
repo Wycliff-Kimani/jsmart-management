@@ -30,6 +30,7 @@ import com.devcraft.jsmart.ui.theme.*
 import kotlinx.coroutines.launch
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.foundation.text.KeyboardOptions
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -275,7 +276,9 @@ fun ProfileScreen(
                     value = phone,
                     editable = editMode,
                     icon = Icons.Filled.Phone,
-                    onValueChange = { phone = it }
+                    onValueChange = { phone = it },
+                    maxLength = 13,
+                    keyboardType = KeyboardType.Phone
                 )
                 ProfileField(
                     label = "Email",
@@ -594,7 +597,9 @@ fun ProfileField(
     value: String,
     editable: Boolean,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
-    onValueChange: (String) -> Unit
+    onValueChange: (String) -> Unit,
+    maxLength: Int = Int.MAX_VALUE,
+    keyboardType: KeyboardType = KeyboardType.Text
 ) {
     Card(
         modifier = Modifier
@@ -606,13 +611,14 @@ fun ProfileField(
         if (editable) {
             OutlinedTextField(
                 value = value,
-                onValueChange = onValueChange,
+                onValueChange = { if (it.length <= maxLength) onValueChange(it) },
                 label = { Text(label, fontSize = 12.sp) },
                 leadingIcon = { Icon(icon, contentDescription = null, tint = TealPrimary,
                     modifier = Modifier.size(18.dp)) },
                 modifier = Modifier.fillMaxWidth().padding(4.dp),
                 shape = RoundedCornerShape(10.dp),
                 singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = TealPrimary,
                     unfocusedBorderColor = OutlineColor.copy(alpha = 0.3f)

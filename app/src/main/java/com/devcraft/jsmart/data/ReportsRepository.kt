@@ -145,29 +145,55 @@ object ReportsRepository {
                 .toLocalDateTime(TimeZone.currentSystemDefault())
                 .date.toString()
 
-            val attendanceFilter = supabase.postgrest["attendance"]
-                .select {
-                    filter {
-                        eq("date", today)
-                        // Branch filtering would typically need a join or separate query
+            val attendanceRecords = if (branchId.isNullOrBlank()) {
+                // Super admin — fetch all
+                supabase.postgrest["attendance"]
+                    .select { filter { eq("date", today) } }
+                    .decodeList<AttendanceDbRecord>()
+            } else {
+                // Fetch attendance for branch users only
+                // First get user IDs for this branch
+                val branchUserIds = supabase.postgrest["users"]
+                    .select {
+                        filter {
+                            eq("branch_id", branchId)
+                            eq("is_active", true)
+                        }
                     }
-                }
-                .decodeList<AttendanceDbRecord>()
+                    .decodeList<UserBrief>()
+                    .map { it.id }
 
-            val presentToday = attendanceFilter.count {
+                if (branchUserIds.isEmpty()) emptyList()
+                else {
+                    supabase.postgrest["attendance"]
+                        .select { filter { eq("date", today) } }
+                        .decodeList<AttendanceDbRecord>()
+                        .filter { it.userId in branchUserIds }
+                }
+            }
+
+            val presentToday = attendanceRecords.count {
                 it.status.lowercase() == "present"
             }
-            val absentToday = attendanceFilter.count {
+            val absentToday = attendanceRecords.count {
                 it.status.lowercase() == "absent"
             }
-            val lateToday = attendanceFilter.count {
+            val lateToday = attendanceRecords.count {
                 it.status.lowercase() == "late"
             }
 
             // Tasks stats
-            val allTasks = supabase.postgrest["tasks"]
-                .select()
-                .decodeList<TaskRow>()
+            val allTasks = if (branchId.isNullOrBlank()) {
+                supabase.postgrest["tasks"]
+                    .select()
+                    .decodeList<TaskRow>()
+            } else {
+                supabase.postgrest["tasks"]
+                    .select {
+                        filter { eq("branch_id", branchId) }
+                    }
+                    .decodeList<TaskRow>()
+            }
             val completedTasks = allTasks.count {
                 it.status.lowercase() == "done"
             }

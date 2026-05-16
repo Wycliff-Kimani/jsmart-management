@@ -133,7 +133,6 @@ fun AdminDashboardScreen(onNavigate: (String) -> Unit) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(TealPrimary)
-                        .statusBarsPadding()
                         .padding(horizontal = 16.dp, vertical = 14.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically

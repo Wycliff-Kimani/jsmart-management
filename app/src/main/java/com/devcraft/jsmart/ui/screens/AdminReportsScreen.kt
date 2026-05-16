@@ -19,8 +19,12 @@ import androidx.compose.ui.unit.sp
 import com.devcraft.jsmart.ui.theme.*
 import com.devcraft.jsmart.data.*
 import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @Composable
 fun AdminReportsScreen() {
@@ -42,11 +46,32 @@ fun AdminReportsScreen() {
     var toDate by remember {
         mutableStateOf(now.date.toString())
     }
+
+    var showFromDatePicker by remember { mutableStateOf(false) }
+    var showToDatePicker by remember { mutableStateOf(false) }
+    var fromDateDisplay by remember { mutableStateOf("") }
+    var toDateDisplay by remember { mutableStateOf("") }
+
+    // Initialize display dates
+    LaunchedEffect(Unit) {
+        val displayFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+        val dbFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+        try {
+            val dFrom = dbFormat.parse(fromDate)
+            if (dFrom != null) fromDateDisplay = displayFormat.format(dFrom)
+            val dTo = dbFormat.parse(toDate)
+            if (dTo != null) toDateDisplay = displayFormat.format(dTo)
+        } catch (_: Exception) {}
+    }
+
     var staffAttendance by remember { mutableStateOf<List<AttendanceDbRecord>>(emptyList()) }
     var allStaff by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
 
+    val currentUser = UserSession.get()
+    val branchId = currentUser?.branchId
+
     LaunchedEffect(Unit) {
-        adminStats = ReportsRepository.getAdminReportStats()
+        adminStats = ReportsRepository.getAdminReportStats(branchId)
         val staffList = StaffRepository.getAllStaff()
         allStaff = staffList.associate { it.id to it.fullName }
         isLoading = false
@@ -100,6 +125,84 @@ fun AdminReportsScreen() {
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp)
         ) {
+            if (showFromDatePicker) {
+                val dbFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                val initialDate = try {
+                    dbFormat.parse(fromDate)?.time ?: java.time.LocalDate.now()
+                        .atStartOfDay(java.time.ZoneOffset.UTC)
+                        .toInstant().toEpochMilli()
+                } catch (e: Exception) {
+                    java.time.LocalDate.now()
+                        .atStartOfDay(java.time.ZoneOffset.UTC)
+                        .toInstant().toEpochMilli()
+                }
+                val datePickerState = rememberDatePickerState(initialSelectedDateMillis = initialDate)
+
+                DatePickerDialog(
+                    onDismissRequest = { showFromDatePicker = false },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            datePickerState.selectedDateMillis?.let { millis ->
+                                val date = Date(millis)
+                                val displayFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+                                val dFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                                fromDateDisplay = displayFormat.format(date)
+                                fromDate = dFormat.format(date)
+                            }
+                            showFromDatePicker = false
+                        }) {
+                            Text("OK", color = TealPrimary)
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showFromDatePicker = false }) {
+                            Text("Cancel", color = CharcoalMedium)
+                        }
+                    }
+                ) {
+                    DatePicker(state = datePickerState)
+                }
+            }
+
+            if (showToDatePicker) {
+                val dbFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                val initialDate = try {
+                    dbFormat.parse(toDate)?.time ?: java.time.LocalDate.now()
+                        .atStartOfDay(java.time.ZoneOffset.UTC)
+                        .toInstant().toEpochMilli()
+                } catch (e: Exception) {
+                    java.time.LocalDate.now()
+                        .atStartOfDay(java.time.ZoneOffset.UTC)
+                        .toInstant().toEpochMilli()
+                }
+                val datePickerState = rememberDatePickerState(initialSelectedDateMillis = initialDate)
+
+                DatePickerDialog(
+                    onDismissRequest = { showToDatePicker = false },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            datePickerState.selectedDateMillis?.let { millis ->
+                                val date = Date(millis)
+                                val displayFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+                                val dFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                                toDateDisplay = displayFormat.format(date)
+                                toDate = dFormat.format(date)
+                            }
+                            showToDatePicker = false
+                        }) {
+                            Text("OK", color = TealPrimary)
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showToDatePicker = false }) {
+                            Text("Cancel", color = CharcoalMedium)
+                        }
+                    }
+                ) {
+                    DatePicker(state = datePickerState)
+                }
+            }
+
             if (isLoading) {
                 Box(modifier = Modifier.fillMaxWidth().padding(40.dp), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(
@@ -110,7 +213,14 @@ fun AdminReportsScreen() {
             } else {
                 when (selectedTab) {
                     0 -> AdminOverviewTab(adminStats)
-                    1 -> AdminAttendanceTab(fromDate, toDate, onFromDateChange = { fromDate = it }, onToDateChange = { toDate = it }, records = staffAttendance, staffMap = allStaff)
+                    1 -> AdminAttendanceTab(
+                        fromDate = fromDateDisplay,
+                        toDate = toDateDisplay,
+                        onFromClick = { showFromDatePicker = true },
+                        onToClick = { showToDatePicker = true },
+                        records = staffAttendance,
+                        staffMap = allStaff
+                    )
                     2 -> AdminTasksTab(adminStats)
                     3 -> AdminLeaveTab(adminStats)
                 }
@@ -161,8 +271,8 @@ fun AdminOverviewTab(stats: AdminReportStats) {
 fun AdminAttendanceTab(
     fromDate: String,
     toDate: String,
-    onFromDateChange: (String) -> Unit,
-    onToDateChange: (String) -> Unit,
+    onFromClick: () -> Unit,
+    onToClick: () -> Unit,
     records: List<AttendanceDbRecord>,
     staffMap: Map<String, String>
 ) {
@@ -171,20 +281,38 @@ fun AdminAttendanceTab(
     Spacer(modifier = Modifier.height(8.dp))
 
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        OutlinedTextField(
-            value = fromDate,
-            onValueChange = onFromDateChange,
-            label = { Text("From Date (YYYY-MM-DD)") },
-            modifier = Modifier.weight(1f),
-            textStyle = androidx.compose.ui.text.TextStyle(fontSize = 12.sp)
-        )
-        OutlinedTextField(
-            value = toDate,
-            onValueChange = onToDateChange,
-            label = { Text("To Date (YYYY-MM-DD)") },
-            modifier = Modifier.weight(1f),
-            textStyle = androidx.compose.ui.text.TextStyle(fontSize = 12.sp)
-        )
+        Box(modifier = Modifier.weight(1f).clickable { onFromClick() }) {
+            OutlinedTextField(
+                value = fromDate,
+                onValueChange = {},
+                readOnly = true,
+                enabled = false,
+                label = { Text("From Date") },
+                modifier = Modifier.fillMaxWidth(),
+                textStyle = androidx.compose.ui.text.TextStyle(fontSize = 12.sp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    disabledBorderColor = CharcoalMedium,
+                    disabledLabelColor = CharcoalMedium,
+                    disabledTextColor = CharcoalDark
+                )
+            )
+        }
+        Box(modifier = Modifier.weight(1f).clickable { onToClick() }) {
+            OutlinedTextField(
+                value = toDate,
+                onValueChange = {},
+                readOnly = true,
+                enabled = false,
+                label = { Text("To Date") },
+                modifier = Modifier.fillMaxWidth(),
+                textStyle = androidx.compose.ui.text.TextStyle(fontSize = 12.sp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    disabledBorderColor = CharcoalMedium,
+                    disabledLabelColor = CharcoalMedium,
+                    disabledTextColor = CharcoalDark
+                )
+            )
+        }
     }
 
     Spacer(modifier = Modifier.height(16.dp))
@@ -218,7 +346,10 @@ fun AdminAttendanceTab(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(record.date, fontSize = 12.sp, color = CharcoalMedium)
-                        Text("${record.clockInTime ?: "--"} - ${record.clockOutTime ?: "--"}", fontSize = 12.sp, color = CharcoalMedium)
+                        Text(
+                            "${formatClockTime(record.clockInTime)} - ${formatClockTime(record.clockOutTime)}",
+                            fontSize = 12.sp, color = CharcoalMedium
+                        )
                     }
                 }
             }
@@ -430,5 +561,20 @@ fun LeaveByStaffRow(name: String, detail: String, type: String) {
                     modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp))
             }
         }
+    }
+}
+
+fun formatClockTime(raw: String?): String {
+    if (raw.isNullOrBlank()) return "--"
+    return try {
+        val cleaned = raw.replace(" ", "T")
+            .let { if (!it.contains("+") && !it.endsWith("Z")) "${it}Z" else it }
+        val instant = Instant.parse(cleaned)
+        val local = instant.toLocalDateTime(TimeZone.currentSystemDefault())
+        val h = local.hour.toString().padStart(2, '0')
+        val m = local.minute.toString().padStart(2, '0')
+        "$h:$m"
+    } catch (e: Exception) {
+        raw.take(5)
     }
 }
